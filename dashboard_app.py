@@ -431,7 +431,7 @@ def dashboard_2():
 
         comparison_df = pd.DataFrame(comparison_data)
 
-        cols = st.columns(2)
+        cols = st.columns(1)
 
         with cols[0]:
             st.write("### Comparison Table - ")
@@ -455,7 +455,8 @@ def dashboard_2():
         # Change the bar mode to group to display bars side by side
         fig.update_layout(barmode='group', title='Gross and Net Profit Comparison')
 
-        with cols[1]:
+        cols = st.columns(1)
+        with cols[0]:
             st.plotly_chart(fig)
 
 
