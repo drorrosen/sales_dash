@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 from Functions import *  # Ensure this matches the name of the file and class where Preprocessing is defined
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -8,7 +7,7 @@ import altair as alt
 import plotly.graph_objects as go
 from datetime import timedelta
 from sklearn.linear_model import Ridge
-
+from io import BytesIO
 
 
 #######################################
@@ -25,12 +24,25 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded")
 
-alt.themes.enable("dark")
+#alt.themes.enable("dark")
 
 
+def intro():
+    import streamlit as st
+
+    st.write("# Welcome to your Sales Dashboard App! 👋")
+    st.sidebar.success("Select a Dashboard above.")
+
+    st.markdown(
+        """
+        This app contains 2 dashboards - 
+        1) individual  monthly dashboard where you can check the statistics of 1 file
+        2) combined dashboard where you can compare the statistics of multiple files 
+        """
+    )
 
 
-def main():
+def dashboard_1():
     st.header("Sales Dashboard! 🚀")
     st.sidebar.success("Upload a file to get started.")
 
@@ -57,74 +69,74 @@ def main():
         st.markdown("### Unit Price")
         col1, col1_1,col2, col2_1 = st.columns(4)
         with col1:
-            st.metric("Average", f"${format_stat(data_cleaned['Unit Price'].mean())}")
+            st.metric("Average", f"AED {format_stat(data_cleaned['Unit Price'].mean())}")
         with col1_1:
-            st.metric("Median", f"${format_stat(data_cleaned['Unit Price'].median())}")
+            st.metric("Median", f"AED {format_stat(data_cleaned['Unit Price'].median())}")
         with col2:
-            st.metric("Standard Deviation", f"${format_stat(data_cleaned['Unit Price'].std())}")
+            st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Unit Price'].std())}")
         with col2_1:
-            st.metric("Max", f"${format_stat(data_cleaned['Unit Price'].max())}")
+            st.metric("Max", f"AED {format_stat(data_cleaned['Unit Price'].max())}")
 
         # Total Price Stats
         st.markdown("### Total Price")
         col3, col3_1 ,col4, col4_1 = st.columns(4)
         with col3:
-            st.metric("Average", f"${format_stat(data_cleaned['Total Price'].mean())}")
+            st.metric("Average", f"AED {format_stat(data_cleaned['Total Price'].mean())}")
         with col3_1:
-            st.metric("Median", f"${format_stat(data_cleaned['Total Price'].median())}")
+            st.metric("Median", f"AED {format_stat(data_cleaned['Total Price'].median())}")
         with col4:
-            st.metric("Standard Deviation", f"${format_stat(data_cleaned['Total Price'].std())}")
+            st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Total Price'].std())}")
         with col4_1:
-            st.metric("Max", f"${format_stat(data_cleaned['Total Price'].max())}")
+            st.metric("Max", f"AED {format_stat(data_cleaned['Total Price'].max())}")
 
         # Delivery Fee Stats
         st.markdown("### Delivery Fee")
         col5, col5_1,col6, col6_1 = st.columns(4)
         with col5:
-            st.metric("Average", f"${format_stat(data_cleaned['Delivery Fee'].mean())}")
+            st.metric("Average", f"AED {format_stat(data_cleaned['Delivery Fee'].mean())}")
         with col5_1:
-            st.metric("Median", f"${format_stat(data_cleaned['Delivery Fee'].median())}")
+            st.metric("Median", f"AED {format_stat(data_cleaned['Delivery Fee'].median())}")
         with col6:
-            st.metric("Standard Deviation", f"${format_stat(data_cleaned['Delivery Fee'].std())}")
+            st.metric("Standard Deviation", f"AED{format_stat(data_cleaned['Delivery Fee'].std())}")
         with col6_1:
-            st.metric("Max", f"${format_stat(data_cleaned['Delivery Fee'].max())}")
+            st.metric("Max", f"AED {format_stat(data_cleaned['Delivery Fee'].max())}")
 
         # Gross Profit Stats
         st.markdown("### Gross Profit")
         col7, col7_1,col8, col8_1 = st.columns(4)
         with col7:
-            st.metric("Average", f"${format_stat(data_cleaned['Gross Profit'].mean())}")
+            st.metric("Average", f"AED {format_stat(data_cleaned['Gross Profit'].mean())}")
         with col7_1:
-            st.metric("Median", f"${format_stat(data_cleaned['Gross Profit'].median())}")
+            st.metric("Median", f"AED {format_stat(data_cleaned['Gross Profit'].median())}")
         with col8:
-            st.metric("Standard Deviation", f"${format_stat(data_cleaned['Gross Profit'].std())}")
+            st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Gross Profit'].std())}")
         with col8_1:
-            st.metric("Max", f"${format_stat(data_cleaned['Gross Profit'].max())}")
+            st.metric("Max", f"AED {format_stat(data_cleaned['Gross Profit'].max())}")
 
         # Commission Stats (Conditional)
-        if 'Commission (AED)' in data_cleaned.columns:
+        if 'Commission (AED )' in data_cleaned.columns:
             st.markdown("### Commission (AED)")
             col9, col9_1,col10, col10_1 = st.columns(4)
             with col9:
-                st.metric("Average", f"${format_stat(data_cleaned['Commission (AED)'].mean())}")
+                st.metric("Average", f"AED {format_stat(data_cleaned['Commission (AED)'].mean())}")
             with col9_1:
-                st.metric("Median", f"${format_stat(data_cleaned['Commission (AED)'].median())}")
+                st.metric("Median", f"AED {format_stat(data_cleaned['Commission (AED)'].median())}")
             with col10:
-                st.metric("Standard Deviation", f"${format_stat(data_cleaned['Commission (AED)'].std())}")
+                st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Commission (AED)'].std())}")
             with col10_1:
-                st.metric("Max", f"${format_stat(data_cleaned['Commission (AED)'].max())}")
+                st.metric("Max", f"AED {format_stat(data_cleaned['Commission (AED)'].max())}")
 
         # Net Profit Stats
         st.markdown("### Net Profit")
         col11, col11_1,col12, col12_1 = st.columns(4)
         with col11:
-            st.metric("Average", f"${format_stat(data_cleaned['Net Profit'].mean())}")
+            st.metric("Average", f"AED {format_stat(data_cleaned['Net Profit'].mean())}")
         with col11_1:
-            st.metric("Median", f"${format_stat(data_cleaned['Net Profit'].median())}")
+            st.metric("Median", f"AED {format_stat(data_cleaned['Net Profit'].median())}")
         with col12:
-            st.metric("Standard Deviation", f"${format_stat(data_cleaned['Net Profit'].std())}")
+            st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Net Profit'].std())}")
         with col12_1:
-            st.metric("Max", f"${format_stat(data_cleaned['Net Profit'].max())}")
+            st.metric("Max", f"AED {format_stat(data_cleaned['Net Profit'].max())}")
 
 
 
@@ -315,7 +327,6 @@ def main():
 
 
 ### Download the results
-        from io import BytesIO
 
         # Assuming 'data' is the DataFrame you want users to be able to download
 
@@ -327,6 +338,7 @@ def main():
             output = BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Sheet1')
+                #writer.save()
             processed_data = output.getvalue()
             return processed_data
 
@@ -356,8 +368,113 @@ def main():
         )
         #
 
+def dashboard_2():
+    st.header("Monthly Comparison Dashboard")
+    uploaded_files = st.sidebar.file_uploader("Choose Excel/CSV files", accept_multiple_files=True, type=['csv', 'xlsx'])
+
+    if uploaded_files:
+        data_frames = []
+        trend_data = {'Gross Profit': [], 'Net Profit': [], 'Delivery Fee': [], 'Unit Price': [], 'Total Price': []}
+
+        for uploaded_file in uploaded_files:
+            if uploaded_file.name.endswith('.xlsx'):
+                df = pd.read_excel(uploaded_file)
+            else:
+                df = pd.read_csv(uploaded_file)
+
+            preprocessing = Preprocessing(df)  # Your preprocessing steps
+            preprocessing.translate_column_names()
+            if 'Date' not in preprocessing.data.columns:
+                continue
+            preprocessing.clean_data()
+            preprocessing.calculate_net_profit()
+            df = preprocessing.data_cleaned
+            df['Date'] = pd.to_datetime(df['Date'])
+            df['Month'] = df['Date'].dt.strftime('%Y-%m')  # For aggregation, if needed
+
+            data_frames.append(df)
+
+            # Prepare data for trend comparison
+            for metric in trend_data.keys():
+                if metric in df.columns:
+                    trend_metric = df.groupby('Date')[metric].sum() if metric != 'Unit Price' else df.groupby('Date')[metric].mean()
+                    trend_data[metric].append({'name': uploaded_file.name, 'data': trend_metric})
+
+        # Now that we have a list of DataFrames, you can compare them
+        # For simplicity, let's assume we want to compare the sum of a 'Sales' column across all files
+
+        # Example of a simple comparison - adapt as needed
+        comparison_data = {
+            'Filename': [],
+            'Gross Profit': [],
+            'Net Profit': [],
+            'Delivery Fee': [],
+            'Unit Price': [],
+            'Total Price': [],
+            'Commission (AED)': []
+
+        }
+
+        for uploaded_file, df in zip(uploaded_files, data_frames):
+            comparison_data['Filename'].append(uploaded_file.name)
+            comparison_data['Gross Profit'].append(df['Gross Profit'].sum())
+            comparison_data['Net Profit'].append(df['Net Profit'].sum())
+            comparison_data['Delivery Fee'].append(df['Delivery Fee'].sum())
+            comparison_data['Unit Price'].append(df['Unit Price'].mean())
+            comparison_data['Total Price'].append(df['Total Price'].mean())
+            if 'Commission (AED)' in df.columns:
+                comparison_data['Commission (AED)'].append(df['Commission (AED)'].sum())
+            else:
+                df['Commission (AED)'] = 0
+                comparison_data['Commission (AED)'].append(df['Commission (AED)'].sum())
+
+
+        comparison_df = pd.DataFrame(comparison_data)
 
 
 
-if __name__ == "__main__":
-    main()
+        # Display the comparison DataFrame
+        st.write(comparison_df)
+
+        fig = go.Figure(data=[
+            go.Bar(name='Gross Profit', x=comparison_df['Filename'], y=comparison_df['Gross Profit'], marker_color='blue'),
+            go.Bar(name='Net Profit', x=comparison_df['Filename'], y=comparison_df['Net Profit'], marker_color='green'),
+            go.Bar(name='Delivery Fee', x=comparison_df['Filename'], y=comparison_df['Delivery Fee'], marker_color='red'),
+            go.Bar(name='Commission (AED)', x=comparison_df['Filename'], y=comparison_df['Commission (AED)'], marker_color='yellow')
+
+        ])
+
+
+
+        # Change the bar mode to group to display bars side by side
+        fig.update_layout(barmode='group', title='Gross and Net Profit Comparison')
+
+        st.plotly_chart(fig)
+
+
+        # Plotting trend comparisons for each metric
+        for metric, data_list in trend_data.items():
+            fig = go.Figure()
+            for data in data_list:
+                fig.add_trace(go.Scatter(x=data['data'].index, y=data['data'], mode='lines+markers', name=data['name']))
+            fig.update_layout(title=f'Trend for {metric}', xaxis_title='Date', yaxis_title=metric, legend_title='File Name')
+            st.plotly_chart(fig)
+
+
+
+
+
+
+
+page_names_to_funcs = {
+    "Introduction": intro,
+    "Individual Monthly Analysis Dashboard": dashboard_1,
+    "Monthly Comparison Dashboard": dashboard_2,
+
+}
+
+dashboard_name = st.sidebar.selectbox("Choose a dashboard", page_names_to_funcs.keys())
+page_names_to_funcs[dashboard_name]()
+#%%
+
+
