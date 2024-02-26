@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import streamlit as st
 
 class Preprocessing:
@@ -47,7 +46,7 @@ class Preprocessing:
         self.data_cleaned = self.data_cleaned.dropna(axis=1, how='all')
         self.data_cleaned = self.data_cleaned.dropna(axis=0, how='all')
 
-        self.data_cleaned = self.data_cleaned.loc[:, self.data_cleaned.nunique() > 1]
+        #self.data_cleaned = self.data_cleaned.loc[:, self.data_cleaned.nunique() > 1]
 
         self.data_cleaned = convert_date_column(self.data_cleaned, 'Date')
         #self.data_cleaned['Date'] = pd.to_datetime(self.data_cleaned['Date'], origin='1899-12-30', unit='D')
