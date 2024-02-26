@@ -5,3 +5,4 @@ altair
 datetime
 scikit-learn
 statsmodels
+matplotlib
