@@ -431,10 +431,16 @@ def dashboard_2():
 
         comparison_df = pd.DataFrame(comparison_data)
 
+        cols = st.columns(2)
+
+        with cols[0]:
+            st.write("### Comparison Table - ")
+            st.table(comparison_df)
 
 
-        # Display the comparison DataFrame
-        st.write(comparison_df)
+
+
+    # Display the comparison DataFrame
 
         fig = go.Figure(data=[
             go.Bar(name='Gross Profit', x=comparison_df['Filename'], y=comparison_df['Gross Profit'], marker_color='blue'),
@@ -449,16 +455,29 @@ def dashboard_2():
         # Change the bar mode to group to display bars side by side
         fig.update_layout(barmode='group', title='Gross and Net Profit Comparison')
 
-        st.plotly_chart(fig)
-
-
-        # Plotting trend comparisons for each metric
-        for metric, data_list in trend_data.items():
-            fig = go.Figure()
-            for data in data_list:
-                fig.add_trace(go.Scatter(x=data['data'].index, y=data['data'], mode='lines+markers', name=data['name']))
-            fig.update_layout(title=f'Trend for {metric}', xaxis_title='Date', yaxis_title=metric, legend_title='File Name')
+        with cols[1]:
             st.plotly_chart(fig)
+
+
+        # Adjusted Plotting Logic for Two Plots Per Column
+        num_plots = len(trend_data)
+        cols_per_row = 2  # Define how many plots per row you want
+        num_rows = (num_plots + cols_per_row - 1) // cols_per_row  # Calculate the number of rows needed
+
+        for row in range(num_rows):
+            cols = st.columns(cols_per_row)  # Create two columns for each row
+            for col_index in range(cols_per_row):
+                plot_index = row * cols_per_row + col_index
+                if plot_index < num_plots:  # Check if there's a metric to plot
+                    metric = list(trend_data.keys())[plot_index]
+                    data_list = trend_data[metric]
+                    fig = go.Figure()
+                    for data in data_list:
+                        fig.add_trace(go.Scatter(x=data['data'].index, y=data['data'], mode='lines+markers', name=data['name']))
+                    fig.update_layout(title=f'Trend for {metric}', xaxis_title='Normalized Index', yaxis_title=metric, legend_title='File Name')
+
+                    with cols[col_index]:  # Display the plot in the correct column
+                        st.plotly_chart(fig)
 
 
 
