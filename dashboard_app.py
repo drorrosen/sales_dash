@@ -10,6 +10,7 @@ from datetime import timedelta
 from sklearn.linear_model import Ridge
 
 
+
 #######################################
 # PAGE SETUP
 #######################################
@@ -326,7 +327,6 @@ def main():
             output = BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Sheet1')
-                writer.save()
             processed_data = output.getvalue()
             return processed_data
 
