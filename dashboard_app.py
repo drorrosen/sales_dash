@@ -435,7 +435,7 @@ def dashboard_2():
 
         with cols[0]:
             st.write("### Comparison Table - ")
-            st.table(comparison_df)
+            st.dataframe(comparison_df)
 
 
 
@@ -462,7 +462,7 @@ def dashboard_2():
 
         # Adjusted Plotting Logic for Two Plots Per Column
         num_plots = len(trend_data)
-        cols_per_row = 2  # Define how many plots per row you want
+        cols_per_row = 3  # Define how many plots per row you want
         num_rows = (num_plots + cols_per_row - 1) // cols_per_row  # Calculate the number of rows needed
 
         for row in range(num_rows):
