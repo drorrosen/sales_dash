@@ -26,7 +26,7 @@ from io import BytesIO
 
 # Set page config
 st.set_page_config(
-    page_title="US Population Dashboard",
+    page_title="Sales Dashboard",
     page_icon="🏂",
     layout="wide",
     initial_sidebar_state="expanded")
@@ -42,9 +42,8 @@ def intro():
 
     st.markdown(
         """
-        This app contains 2 dashboards - 
-        1) individual  monthly dashboard where you can check the statistics of 1 file
-        2) combined dashboard where you can compare the statistics of multiple files 
+        This app contains 1 dashboards - 
+        1) General Dashboard - Please upload latest months sales data (according to the correct structure)
         """
     )
 
@@ -487,128 +486,128 @@ def dashboard_1():
         )
         #
 
-def dashboard_2():
-    st.header("Monthly Comparison Dashboard")
-    uploaded_files = st.sidebar.file_uploader("Choose Excel/CSV files", accept_multiple_files=True, type=['csv', 'xlsx'])
-
-    if uploaded_files:
-        data_frames = []
-        trend_data = {'Gross Profit': [], 'Net Profit': [], 'Shipping Fee': [], 'Unit Price': [], 'Total Price': []}
-
-        for uploaded_file in uploaded_files:
-            if uploaded_file.name.endswith('.xlsx'):
-                df = pd.read_excel(uploaded_file)
-            else:
-                df = pd.read_csv(uploaded_file)
-
-            preprocessing = Preprocessing(df)  # Your preprocessing steps
-            preprocessing.translate_column_names()
-            if 'Date' not in preprocessing.data.columns:
-                continue
-            preprocessing.clean_data()
-            preprocessing.calculate_net_profit()
-            df = preprocessing.data_cleaned
-            df['Date'] = pd.to_datetime(df['Date'])
-            df['Month'] = df['Date'].dt.strftime('%Y-%m')  # For aggregation, if needed
-
-            data_frames.append(df)
-
-            # Prepare data for trend comparison
-            for metric in trend_data.keys():
-                if metric in df.columns:
-                    trend_metric = df.groupby('Date')[metric].sum() if metric != 'Unit Price' else df.groupby('Date')[metric].mean()
-                    trend_data[metric].append({'name': uploaded_file.name, 'data': trend_metric})
-
-        # Now that we have a list of DataFrames, you can compare them
-        # For simplicity, let's assume we want to compare the sum of a 'Sales' column across all files
-
-        # Example of a simple comparison - adapt as needed
-        comparison_data = {
-            'Filename': [],
-            'Gross Profit': [],
-            'Net Profit': [],
-            'Shipping Fee': [],
-            'Unit Price': [],
-            'Total Price': [],
-            'Commission (AED)': []
-
-        }
-
-        for uploaded_file, df in zip(uploaded_files, data_frames):
-            comparison_data['Filename'].append(uploaded_file.name)
-            comparison_data['Gross Profit'].append(df['Gross Profit'].sum())
-            comparison_data['Net Profit'].append(df['Net Profit'].sum())
-            comparison_data['Shipping Fee'].append(df['Shipping Fee'].sum())
-            comparison_data['Unit Price'].append(df['Unit Price'].mean())
-            comparison_data['Total Price'].append(df['Total Price'].mean())
-            if 'Commission (AED)' in df.columns:
-                comparison_data['Commission (AED)'].append(df['Commission (AED)'].sum())
-            else:
-                df['Commission (AED)'] = 0
-                comparison_data['Commission (AED)'].append(df['Commission (AED)'].sum())
-
-
-        comparison_df = pd.DataFrame(comparison_data)
-
-        cols = st.columns(1)
-
-        with cols[0]:
-            st.write("### Comparison Table - ")
-            st.dataframe(comparison_df)
-
-
-
-
-    # Display the comparison DataFrame
-
-        fig = go.Figure(data=[
-            go.Bar(name='Gross Profit', x=comparison_df['Filename'], y=comparison_df['Gross Profit'], marker_color='blue'),
-            go.Bar(name='Net Profit', x=comparison_df['Filename'], y=comparison_df['Net Profit'], marker_color='green'),
-            go.Bar(name='Shipping Fee', x=comparison_df['Filename'], y=comparison_df['Shipping Fee'], marker_color='red'),
-            go.Bar(name='Commission (AED)', x=comparison_df['Filename'], y=comparison_df['Commission (AED)'], marker_color='yellow')
-
-        ])
-
-
-
-        # Change the bar mode to group to display bars side by side
-        fig.update_layout(barmode='group', title='Gross and Net Profit Comparison')
-
-        cols = st.columns(1)
-        with cols[0]:
-            st.plotly_chart(fig)
-
-
-        # Adjusted Plotting Logic for Two Plots Per Column
-        num_plots = len(trend_data)
-        cols_per_row = 3  # Define how many plots per row you want
-        num_rows = (num_plots + cols_per_row - 1) // cols_per_row  # Calculate the number of rows needed
-
-        for row in range(num_rows):
-            cols = st.columns(cols_per_row)  # Create two columns for each row
-            for col_index in range(cols_per_row):
-                plot_index = row * cols_per_row + col_index
-                if plot_index < num_plots:  # Check if there's a metric to plot
-                    metric = list(trend_data.keys())[plot_index]
-                    data_list = trend_data[metric]
-                    fig = go.Figure()
-                    for data in data_list:
-                        fig.add_trace(go.Scatter(x=data['data'].index, y=data['data'], mode='lines+markers', name=data['name']))
-                    fig.update_layout(title=f'Trend for {metric}', xaxis_title='Normalized Index', yaxis_title=metric, legend_title='File Name')
-
-                    with cols[col_index]:  # Display the plot in the correct column
-                        st.plotly_chart(fig)
-
-
-
+# def dashboard_2():
+#     st.header("Monthly Comparison Dashboard")
+#     uploaded_files = st.sidebar.file_uploader("Choose Excel/CSV files", accept_multiple_files=True, type=['csv', 'xlsx'])
+#
+#     if uploaded_files:
+#         data_frames = []
+#         trend_data = {'Gross Profit': [], 'Net Profit': [], 'Shipping Fee': [], 'Unit Price': [], 'Total Price': []}
+#
+#         for uploaded_file in uploaded_files:
+#             if uploaded_file.name.endswith('.xlsx'):
+#                 df = pd.read_excel(uploaded_file)
+#             else:
+#                 df = pd.read_csv(uploaded_file)
+#
+#             preprocessing = Preprocessing(df)  # Your preprocessing steps
+#             preprocessing.translate_column_names()
+#             if 'Date' not in preprocessing.data.columns:
+#                 continue
+#             preprocessing.clean_data()
+#             preprocessing.calculate_net_profit()
+#             df = preprocessing.data_cleaned
+#             df['Date'] = pd.to_datetime(df['Date'])
+#             df['Month'] = df['Date'].dt.strftime('%Y-%m')  # For aggregation, if needed
+#
+#             data_frames.append(df)
+#
+#             # Prepare data for trend comparison
+#             for metric in trend_data.keys():
+#                 if metric in df.columns:
+#                     trend_metric = df.groupby('Date')[metric].sum() if metric != 'Unit Price' else df.groupby('Date')[metric].mean()
+#                     trend_data[metric].append({'name': uploaded_file.name, 'data': trend_metric})
+#
+#         # Now that we have a list of DataFrames, you can compare them
+#         # For simplicity, let's assume we want to compare the sum of a 'Sales' column across all files
+#
+#         # Example of a simple comparison - adapt as needed
+#         comparison_data = {
+#             'Filename': [],
+#             'Gross Profit': [],
+#             'Net Profit': [],
+#             'Shipping Fee': [],
+#             'Unit Price': [],
+#             'Total Price': [],
+#             'Commission (AED)': []
+#
+#         }
+#
+#         for uploaded_file, df in zip(uploaded_files, data_frames):
+#             comparison_data['Filename'].append(uploaded_file.name)
+#             comparison_data['Gross Profit'].append(df['Gross Profit'].sum())
+#             comparison_data['Net Profit'].append(df['Net Profit'].sum())
+#             comparison_data['Shipping Fee'].append(df['Shipping Fee'].sum())
+#             comparison_data['Unit Price'].append(df['Unit Price'].mean())
+#             comparison_data['Total Price'].append(df['Total Price'].mean())
+#             if 'Commission (AED)' in df.columns:
+#                 comparison_data['Commission (AED)'].append(df['Commission (AED)'].sum())
+#             else:
+#                 df['Commission (AED)'] = 0
+#                 comparison_data['Commission (AED)'].append(df['Commission (AED)'].sum())
+#
+#
+#         comparison_df = pd.DataFrame(comparison_data)
+#
+#         cols = st.columns(1)
+#
+#         with cols[0]:
+#             st.write("### Comparison Table - ")
+#             st.dataframe(comparison_df)
+#
+#
+#
+#
+#     # Display the comparison DataFrame
+#
+#         fig = go.Figure(data=[
+#             go.Bar(name='Gross Profit', x=comparison_df['Filename'], y=comparison_df['Gross Profit'], marker_color='blue'),
+#             go.Bar(name='Net Profit', x=comparison_df['Filename'], y=comparison_df['Net Profit'], marker_color='green'),
+#             go.Bar(name='Shipping Fee', x=comparison_df['Filename'], y=comparison_df['Shipping Fee'], marker_color='red'),
+#             go.Bar(name='Commission (AED)', x=comparison_df['Filename'], y=comparison_df['Commission (AED)'], marker_color='yellow')
+#
+#         ])
+#
+#
+#
+#         # Change the bar mode to group to display bars side by side
+#         fig.update_layout(barmode='group', title='Gross and Net Profit Comparison')
+#
+#         cols = st.columns(1)
+#         with cols[0]:
+#             st.plotly_chart(fig)
+#
+#
+#         # Adjusted Plotting Logic for Two Plots Per Column
+#         num_plots = len(trend_data)
+#         cols_per_row = 3  # Define how many plots per row you want
+#         num_rows = (num_plots + cols_per_row - 1) // cols_per_row  # Calculate the number of rows needed
+#
+#         for row in range(num_rows):
+#             cols = st.columns(cols_per_row)  # Create two columns for each row
+#             for col_index in range(cols_per_row):
+#                 plot_index = row * cols_per_row + col_index
+#                 if plot_index < num_plots:  # Check if there's a metric to plot
+#                     metric = list(trend_data.keys())[plot_index]
+#                     data_list = trend_data[metric]
+#                     fig = go.Figure()
+#                     for data in data_list:
+#                         fig.add_trace(go.Scatter(x=data['data'].index, y=data['data'], mode='lines+markers', name=data['name']))
+#                     fig.update_layout(title=f'Trend for {metric}', xaxis_title='Normalized Index', yaxis_title=metric, legend_title='File Name')
+#
+#                     with cols[col_index]:  # Display the plot in the correct column
+#                         st.plotly_chart(fig)
+#
+#
+#
 
 
 
 
 page_names_to_funcs = {
     "Introduction": intro,
-    "Individual Monthly Analysis Dashboard": dashboard_1,
-    "Monthly Comparison Dashboard": dashboard_2,
+    "General Dashboard": dashboard_1
+    #"Monthly Comparison Dashboard": dashboard_2,
 
 }
 
