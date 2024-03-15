@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 from Functions import *  # Ensure this matches the name of the file and class where Preprocessing is defined
 import plotly.express as px
@@ -7,7 +8,13 @@ import altair as alt
 import plotly.graph_objects as go
 from datetime import timedelta
 from sklearn.linear_model import Ridge
+from sklearn.ensemble import RandomForestRegressor
 from io import BytesIO
+
+
+
+
+
 
 
 #######################################
@@ -48,17 +55,127 @@ def dashboard_1():
 
     df_uploaded = file_upload()
     if df_uploaded is not None:
-        # Use the Preprocessing class to clean the uploaded data
-        preprocessing = Preprocessing(df_uploaded)  # Adjust this if your Preprocessing class is designed differently
-        preprocessing.translate_column_names()
-        preprocessing.clean_data()
-        preprocessing.calculate_net_profit()
+        # Generate a unique session key for the uploaded file based on its name and upload time
+        session_key = f"data_cleaned"
 
-        data_cleaned = preprocessing.data_cleaned
+        # Check if the file or its processing is already in session state (to avoid reprocessing)
+        if session_key not in st.session_state:
+            # Process the uploaded data and store in session state
+            processor = DataFrameProcessor(df_uploaded)  # Adjust if your class is designed differently
+            processed_df = processor.process()
+
+            content = download_file_from_dropbox('/all_months.xlsx')
+            try:
+                full_df = pd.read_excel(BytesIO(content))
+            except:
+                full_df = pd.read_csv(BytesIO(content))
+
+            data_cleaned = pd.concat([full_df, processed_df], axis=0, ignore_index=True, sort=False)
+            data_cleaned = data_cleaned.drop_duplicates()
+            data_cleaned['Date'] = pd.to_datetime(data_cleaned['Date'], errors='coerce')
+
+            # Store the cleaned data in session state using the unique session key
+            st.session_state[session_key] = data_cleaned
+
+        # Retrieve the processed and stored data from session state
+        data_cleaned = st.session_state[session_key]
+
+
+
+
+        #updating the data in dropbox
+        upload_dataframe_to_dropbox(data_cleaned, '/all_months.xlsx')
+
+        # Assuming data_cleaned is your DataFrame and it's already loaded
+        filtered_data = data_cleaned.copy()
+
+        # Filter the DataFrame to include only data from 2021 to 2023
+        start_date = '2021-01-01'
+        filtered_data = filtered_data[(filtered_data['Date'] >= start_date)]
+
+
+        # Extract years and months
+        filtered_data['Year'] = filtered_data['Date'].dt.year
+        filtered_data['Month'] = filtered_data['Date'].dt.month
+
+        # Get unique years and months for selection
+        years = sorted(filtered_data['Year'].unique())
+        months = sorted(filtered_data['Month'].unique())
+
+
+
+        # Sidebar multiselect for years and months with the option to select none
+        selected_years = st.sidebar.multiselect('Select Years', options=years, default=years)
+        selected_months = st.sidebar.multiselect('Select Months', options=months, default=months)
+
+        # Filter data based on the selected year and month
+        # If no year or month is selected, it defaults to including all data
+        if selected_years:
+            filtered_data = filtered_data[filtered_data['Year'].isin(selected_years)]
+        if selected_months:
+            filtered_data = filtered_data[filtered_data['Month'].isin(selected_months)]
+        # Display filtered data
+        # Example: Display filtered data
+
+        st.subheader("Filtered Data")
+        st.write(filtered_data)
+
+
+
+
+
+
+
+
+
+        # Assuming data_cleaned is your DataFrame and 'Gross Profit' is the column with potential text values
+        filtered_data['Gross Profit'] = pd.to_numeric(filtered_data['Gross Profit'], errors='coerce')
+
+        #calculate net profit
+        filtered_data = calculate_net_profit(filtered_data)
+
+        # add date lag values
+
+        filtered_data = add_net_profit_lags(filtered_data, 7)
+
+
+        # Apply the mapping function to the 'Category' column
+        filtered_data['Received/Returned'] = filtered_data['Received/Returned'].str.lower().str.strip()
+        filtered_data['Shipping Returns'] = filtered_data['Received/Returned'].apply(map_to_returned)
+
         # Now data_cleaned can be used for visualization and analysis
         #st.write("Cleaned Data", data_cleaned.head())
 
-        # Title for the statistics section
+
+        st.markdown('## Records')
+        # Display records held
+        # These calculations assume your data has been processed to include all necessary fields
+        col0_1, col_0_2 = st.columns(2)
+        with col0_1:
+            high_month_sale = filtered_data.groupby(['Year', 'Month'])['Total Price'].sum().idxmax()
+            st.metric("Highest Single Sale Month", f"{high_month_sale[0]}-{high_month_sale[1]}")
+            highest_gross_revenue_month = filtered_data.groupby(['Year', 'Month'])['Gross Profit'].sum().idxmax()
+            st.metric("Highest Gross Profit Month", f"{highest_gross_revenue_month[0]}-{highest_gross_revenue_month[1]}")
+            highest_net_revenue_month = filtered_data.groupby(['Year', 'Month'])['Net Profit'].sum().idxmax()
+            st.metric("Highest Net Profit Month", f"{highest_net_revenue_month[0]}-{highest_net_revenue_month[1]}")
+
+        with col_0_2:
+
+            highest_single_sale = filtered_data['Total Price'].max()
+            st.metric("Highest Single Sale", f"AED {highest_single_sale:,.2f}")
+            highest_gross_profit = filtered_data['Gross Profit'].max()
+            st.metric("Highest Gross Profit", f"AED {highest_gross_profit:,.2f}")
+            highest_net_profit = filtered_data['Net Profit'].max()
+            st.metric("Highest Net Profit", f"AED {highest_net_profit:,.2f}")
+
+
+
+
+
+
+
+
+# Title for the statistics section
         st.markdown("## 📈 Descriptive Statistics")
 
         # Function for formatting numbers nicely
@@ -69,74 +186,74 @@ def dashboard_1():
         st.markdown("### Unit Price")
         col1, col1_1,col2, col2_1 = st.columns(4)
         with col1:
-            st.metric("Average", f"AED {format_stat(data_cleaned['Unit Price'].mean())}")
+            st.metric("Average", f"AED {format_stat(filtered_data['Unit Price'].mean())}")
         with col1_1:
-            st.metric("Median", f"AED {format_stat(data_cleaned['Unit Price'].median())}")
+            st.metric("Median", f"AED {format_stat(filtered_data['Unit Price'].median())}")
         with col2:
-            st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Unit Price'].std())}")
+            st.metric("Standard Deviation", f"AED {format_stat(filtered_data['Unit Price'].std())}")
         with col2_1:
-            st.metric("Max", f"AED {format_stat(data_cleaned['Unit Price'].max())}")
+            st.metric("Max", f"AED {format_stat(filtered_data['Unit Price'].max())}")
 
         # Total Price Stats
         st.markdown("### Total Price")
         col3, col3_1 ,col4, col4_1 = st.columns(4)
         with col3:
-            st.metric("Average", f"AED {format_stat(data_cleaned['Total Price'].mean())}")
+            st.metric("Average", f"AED {format_stat(filtered_data['Total Price'].mean())}")
         with col3_1:
-            st.metric("Median", f"AED {format_stat(data_cleaned['Total Price'].median())}")
+            st.metric("Median", f"AED {format_stat(filtered_data['Total Price'].median())}")
         with col4:
-            st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Total Price'].std())}")
+            st.metric("Standard Deviation", f"AED {format_stat(filtered_data['Total Price'].std())}")
         with col4_1:
-            st.metric("Max", f"AED {format_stat(data_cleaned['Total Price'].max())}")
+            st.metric("Max", f"AED {format_stat(filtered_data['Total Price'].max())}")
 
         # Delivery Fee Stats
-        st.markdown("### Delivery Fee")
+        st.markdown("### Shipping Fee")
         col5, col5_1,col6, col6_1 = st.columns(4)
         with col5:
-            st.metric("Average", f"AED {format_stat(data_cleaned['Delivery Fee'].mean())}")
+            st.metric("Average", f"AED {format_stat(filtered_data['Shipping Fee'].mean())}")
         with col5_1:
-            st.metric("Median", f"AED {format_stat(data_cleaned['Delivery Fee'].median())}")
+            st.metric("Median", f"AED {format_stat(filtered_data['Shipping Fee'].median())}")
         with col6:
-            st.metric("Standard Deviation", f"AED{format_stat(data_cleaned['Delivery Fee'].std())}")
+            st.metric("Standard Deviation", f"AED{format_stat(filtered_data['Shipping Fee'].std())}")
         with col6_1:
-            st.metric("Max", f"AED {format_stat(data_cleaned['Delivery Fee'].max())}")
+            st.metric("Max", f"AED {format_stat(filtered_data['Shipping Fee'].max())}")
 
         # Gross Profit Stats
         st.markdown("### Gross Profit")
         col7, col7_1,col8, col8_1 = st.columns(4)
         with col7:
-            st.metric("Average", f"AED {format_stat(data_cleaned['Gross Profit'].mean())}")
+            st.metric("Average", f"AED {format_stat(filtered_data['Gross Profit'].mean())}")
         with col7_1:
-            st.metric("Median", f"AED {format_stat(data_cleaned['Gross Profit'].median())}")
+            st.metric("Median", f"AED {format_stat(filtered_data['Gross Profit'].median())}")
         with col8:
-            st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Gross Profit'].std())}")
+            st.metric("Standard Deviation", f"AED {format_stat(filtered_data['Gross Profit'].std())}")
         with col8_1:
-            st.metric("Max", f"AED {format_stat(data_cleaned['Gross Profit'].max())}")
+            st.metric("Max", f"AED {format_stat(filtered_data['Gross Profit'].max())}")
 
         # Commission Stats (Conditional)
-        if 'Commission (AED )' in data_cleaned.columns:
+        if 'Commission (AED )' in filtered_data.columns:
             st.markdown("### Commission (AED)")
             col9, col9_1,col10, col10_1 = st.columns(4)
             with col9:
-                st.metric("Average", f"AED {format_stat(data_cleaned['Commission (AED)'].mean())}")
+                st.metric("Average", f"AED {format_stat(filtered_data['Commission (AED)'].mean())}")
             with col9_1:
-                st.metric("Median", f"AED {format_stat(data_cleaned['Commission (AED)'].median())}")
+                st.metric("Median", f"AED {format_stat(filtered_data['Commission (AED)'].median())}")
             with col10:
-                st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Commission (AED)'].std())}")
+                st.metric("Standard Deviation", f"AED {format_stat(filtered_data['Commission (AED)'].std())}")
             with col10_1:
-                st.metric("Max", f"AED {format_stat(data_cleaned['Commission (AED)'].max())}")
+                st.metric("Max", f"AED {format_stat(filtered_data['Commission (AED)'].max())}")
 
         # Net Profit Stats
         st.markdown("### Net Profit")
         col11, col11_1,col12, col12_1 = st.columns(4)
         with col11:
-            st.metric("Average", f"AED {format_stat(data_cleaned['Net Profit'].mean())}")
+            st.metric("Average", f"AED {format_stat(filtered_data['Net Profit'].mean())}")
         with col11_1:
-            st.metric("Median", f"AED {format_stat(data_cleaned['Net Profit'].median())}")
+            st.metric("Median", f"AED {format_stat(filtered_data['Net Profit'].median())}")
         with col12:
-            st.metric("Standard Deviation", f"AED {format_stat(data_cleaned['Net Profit'].std())}")
+            st.metric("Standard Deviation", f"AED {format_stat(filtered_data['Net Profit'].std())}")
         with col12_1:
-            st.metric("Max", f"AED {format_stat(data_cleaned['Net Profit'].max())}")
+            st.metric("Max", f"AED {format_stat(filtered_data['Net Profit'].max())}")
 
 
 
@@ -145,12 +262,12 @@ def dashboard_1():
 
         # Create two columns for charts
         fig_col1, fig_col2, fig_col3 = st.columns(3)
-        if 'Delivery Returns' in data_cleaned.columns:
+        if 'Shipping Returns' in filtered_data.columns:
             with fig_col1:
                 # Plot the pie chart for Delivery Returns
-                delivery_returns_counts = data_cleaned['Delivery Returns'].value_counts()
+                delivery_returns_counts = filtered_data['Shipping Returns'].value_counts()
                 fig_pie = px.pie(names=delivery_returns_counts.index, values=delivery_returns_counts.values,
-                                 title='Distribution of Delivery Returns')
+                                 title='Distribution of Shipping Returns')
                 st.write(fig_pie)
 
         with fig_col2:
@@ -159,7 +276,7 @@ def dashboard_1():
 
 
             # Aggregating data
-            data_grouped = data_cleaned.groupby('Date').agg({col: 'sum' for col in columns_to_aggregate}).reset_index()
+            data_grouped = filtered_data.groupby('Date').agg({col: 'sum' for col in columns_to_aggregate}).reset_index()
 
             # Assuming 'Total Profit' is already calculated and included in `data_grouped`
             # If not, adjust the aggregation function accordingly
@@ -184,11 +301,13 @@ def dashboard_1():
         # Assuming 'Date' in your DataFrame is already in datetime format.
         # If your data is not aggregated, aggregate 'Net Profit' and 'Total Price' by 'Date' (daily aggregation shown here).
         with fig_col3:
-            data_grouped = data_cleaned.groupby('Date').agg({'Gross Profit':'sum', 'Net Profit':'sum'}).reset_index()
+            data_grouped = filtered_data.groupby('Date').agg({'Gross Profit':'sum', 'Net Profit':'sum'}).reset_index()
 
-            # Calculate profit margin percentage for the aggregated data
-            data_grouped['Profit Margin (%)'] = (data_grouped['Net Profit'] / data_grouped['Gross Profit'])
-
+            # Calculate 'Profit Margin (%)', avoiding division by zero
+            data_grouped['Profit Margin (%)'] = np.where(
+             data_grouped['Gross Profit'] != 0,  # Condition
+            (data_grouped['Net Profit'] / data_grouped['Gross Profit']) * 100,  # True: calculate profit margin
+            np.nan)
             # Plot the profit margin over time
             fig = px.line(data_grouped, x='Date', y='Profit Margin (%)', title='Profit Margin Percentage Over Time (Net Profit/Gross Profit)')
             fig.update_xaxes(title_text='Date')
@@ -202,8 +321,8 @@ def dashboard_1():
 
 
         # Convert 'Date' to ordinal to use as a feature for linear regression
-        data_grouped = data_cleaned.groupby('Date')[['Unit Price', 'Total Price', 'Delivery Fee', 'Gross Profit', 'Net Profit']].mean().reset_index()
-        data_grouped['DateOrdinal'] = data_grouped['Date'].apply(lambda x: x.toordinal())
+        data_grouped = filtered_data.groupby('Date')[['Unit Price', 'Total Price', 'Shipping Fee', 'Gross Profit', 'Net Profit']].mean().reset_index()
+        #data_grouped['DateOrdinal'] = data_grouped['Date'].apply(lambda x: x.toordinal())
 
 
         with fig_col3:
@@ -220,7 +339,7 @@ def dashboard_1():
             y = data_with_lags['Net Profit'].values
 
             # Initialize and train the model
-            model = Ridge()
+            model = RandomForestRegressor()
             model.fit(X, y)
 
             # Prepare to forecast the next 30 days, using a rolling approach
@@ -297,7 +416,7 @@ def dashboard_1():
             fig = go.Figure()
 
             # Add Delivery Fee trace on secondary y-axis
-            fig.add_trace(go.Scatter(x=data_grouped['Date'], y=data_grouped['Delivery Fee'], name='Delivery Fee',
+            fig.add_trace(go.Scatter(x=data_grouped['Date'], y=data_grouped['Shipping Fee'], name='Shipping Fee',
                                      mode='lines+markers', yaxis='y2',
                                      marker=dict(color='FireBrick')))
 
@@ -305,8 +424,8 @@ def dashboard_1():
             fig.update_layout(
                 xaxis=dict(title='Date'),
                 yaxis=dict(title='Quantity', side='left', showgrid=False),
-                yaxis2=dict(title='Delivery Fee', side='right', overlaying='y', showgrid=False),
-                title='Trends in Quantity and Delivery Fee Over Time'
+                yaxis2=dict(title='Shipping Fee', side='right', overlaying='y', showgrid=False),
+                title='Trends in Quantity and Shipping Fee Over Time'
             )
 
             # Add legend and layout options as needed
@@ -356,7 +475,7 @@ def dashboard_1():
 
 
         # Convert DataFrame to Excel in-memory
-        excel_data = to_excel(data_cleaned)
+        excel_data = to_excel(filtered_data)
 
         # Sidebar download button
         st.sidebar.header("Download the cleaned data")
@@ -374,7 +493,7 @@ def dashboard_2():
 
     if uploaded_files:
         data_frames = []
-        trend_data = {'Gross Profit': [], 'Net Profit': [], 'Delivery Fee': [], 'Unit Price': [], 'Total Price': []}
+        trend_data = {'Gross Profit': [], 'Net Profit': [], 'Shipping Fee': [], 'Unit Price': [], 'Total Price': []}
 
         for uploaded_file in uploaded_files:
             if uploaded_file.name.endswith('.xlsx'):
@@ -408,7 +527,7 @@ def dashboard_2():
             'Filename': [],
             'Gross Profit': [],
             'Net Profit': [],
-            'Delivery Fee': [],
+            'Shipping Fee': [],
             'Unit Price': [],
             'Total Price': [],
             'Commission (AED)': []
@@ -419,7 +538,7 @@ def dashboard_2():
             comparison_data['Filename'].append(uploaded_file.name)
             comparison_data['Gross Profit'].append(df['Gross Profit'].sum())
             comparison_data['Net Profit'].append(df['Net Profit'].sum())
-            comparison_data['Delivery Fee'].append(df['Delivery Fee'].sum())
+            comparison_data['Shipping Fee'].append(df['Shipping Fee'].sum())
             comparison_data['Unit Price'].append(df['Unit Price'].mean())
             comparison_data['Total Price'].append(df['Total Price'].mean())
             if 'Commission (AED)' in df.columns:
@@ -445,7 +564,7 @@ def dashboard_2():
         fig = go.Figure(data=[
             go.Bar(name='Gross Profit', x=comparison_df['Filename'], y=comparison_df['Gross Profit'], marker_color='blue'),
             go.Bar(name='Net Profit', x=comparison_df['Filename'], y=comparison_df['Net Profit'], marker_color='green'),
-            go.Bar(name='Delivery Fee', x=comparison_df['Filename'], y=comparison_df['Delivery Fee'], marker_color='red'),
+            go.Bar(name='Shipping Fee', x=comparison_df['Filename'], y=comparison_df['Shipping Fee'], marker_color='red'),
             go.Bar(name='Commission (AED)', x=comparison_df['Filename'], y=comparison_df['Commission (AED)'], marker_color='yellow')
 
         ])
