@@ -120,13 +120,6 @@ def dashboard_1():
         st.write(filtered_data)
 
 
-
-
-
-
-
-
-
         # Assuming data_cleaned is your DataFrame and 'Gross Profit' is the column with potential text values
         filtered_data['Gross Profit'] = pd.to_numeric(filtered_data['Gross Profit'], errors='coerce')
 
@@ -142,8 +135,29 @@ def dashboard_1():
         filtered_data['Received/Returned'] = filtered_data['Received/Returned'].str.lower().str.strip()
         filtered_data['Shipping Returns'] = filtered_data['Received/Returned'].apply(map_to_returned)
 
-        # Now data_cleaned can be used for visualization and analysis
-        #st.write("Cleaned Data", data_cleaned.head())
+
+        # Calculate delivery metrics based on the filtered data
+        processor = DataFrameProcessor(filtered_data)  # Assuming processor is already defined
+        completed_percentage, failed_deliveries_revenue, average_sales_per_day = processor.calculate_delivery_metrics(filtered_data)
+
+
+
+
+        # Assuming 'filtered_data' is your DataFrame after applying user filters
+        annual_changes = calculate_annual_percentage_difference(filtered_data)
+
+        # Display the results
+        st.write("### Annual Percentage Change in Profits")
+        st.dataframe(annual_changes[['Year', 'Net Profit Percentage Change', 'Gross Profit Percentage Change']])
+
+
+
+
+
+
+
+
+
 
 
         st.markdown('## Records')
@@ -157,6 +171,8 @@ def dashboard_1():
             st.metric("Highest Gross Profit Month", f"{highest_gross_revenue_month[0]}-{highest_gross_revenue_month[1]}")
             highest_net_revenue_month = filtered_data.groupby(['Year', 'Month'])['Net Profit'].sum().idxmax()
             st.metric("Highest Net Profit Month", f"{highest_net_revenue_month[0]}-{highest_net_revenue_month[1]}")
+            st.metric("Average Sales Per Day", f"AED {average_sales_per_day}")
+
 
         with col_0_2:
 
@@ -258,6 +274,35 @@ def dashboard_1():
 
 
         st.subheader("Data Visualization")
+
+        #Create 2 columns for the 2 charts
+        col1, col2 = st.columns(2)
+
+
+        with col1:
+            # Convert the Series to a DataFrame and change 'MonthYear' to string format
+            completed_percentage_df = completed_percentage.reset_index()
+            completed_percentage_df.columns = ['MonthYear', 'Percentage']
+            completed_percentage_df['MonthYear'] = completed_percentage_df['MonthYear'].astype(str)
+
+            # Use Plotly Express to plot the DataFrame
+            fig = px.bar(completed_percentage_df, x='MonthYear', y='Percentage', title='Completed Deliveries Percentage by Month', labels={'MonthYear': 'Month-Year', 'Percentage': 'Completed Deliveries (%)'})
+
+            # Show the figure
+            st.plotly_chart(fig)
+
+
+        with col2:
+            # Convert the Series to a DataFrame and change 'MonthYear' to string format
+            failed_deliveries_revenue_df = failed_deliveries_revenue.reset_index()
+            failed_deliveries_revenue_df.columns = ['MonthYear', 'Failed Deliveries Revenue']
+            failed_deliveries_revenue_df['MonthYear'] = failed_deliveries_revenue_df['MonthYear'].astype(str)
+
+            # Use Plotly Express to plot the DataFrame
+            fig = px.bar(failed_deliveries_revenue_df, x='MonthYear', y='Failed Deliveries Revenue', title='Failed Deliveries Revenue by Month', labels={'MonthYear': 'Month-Year', 'Failed Deliveries Revenue': 'Failed Deliveries Revenue AED'})
+
+            # Show the figure
+            st.plotly_chart(fig)
 
         # Create two columns for charts
         fig_col1, fig_col2, fig_col3 = st.columns(3)
