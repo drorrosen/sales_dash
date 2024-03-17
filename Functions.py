@@ -70,6 +70,28 @@ class DataFrameProcessor:
 
 
 
+    def calculate_delivery_metrics(self, df):
+        # Ensure 'Date' is in datetime format and 'Gross Profit' is numeric
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        df['Gross Profit'] = pd.to_numeric(df['Gross Profit'], errors='coerce')
+
+        # Calculate % of Completed Deliveries Each Month
+        df['MonthYear'] = df['Date'].dt.to_period('M')
+        completed_deliveries = df[df['Gross Profit'] > 0].groupby('MonthYear').size()
+        total_deliveries = df.groupby('MonthYear').size()
+        completed_percentage = (completed_deliveries / total_deliveries * 100).fillna(0).round(2)
+
+        # Calculate Failed Delivery Lost Revenue
+        failed_deliveries_revenue = df[df['Gross Profit'] <= 0].groupby('MonthYear')['Total Price'].sum()
+
+        # Calculate Average Sales Per Day
+        daily_sales = df.groupby(df['Date'].dt.date)['Total Price'].sum()
+        average_sales_per_day = daily_sales.mean().round(2)
+
+        return completed_percentage, failed_deliveries_revenue, average_sales_per_day
+
+
+
 
 def calculate_net_profit(df):
         # Check if 'Commission (AED)' column exists
@@ -152,4 +174,21 @@ def map_to_returned(category):
         return 'returned'
     else:
         return 'not_returned'
+
+
+
+
+
+def calculate_annual_percentage_difference(df):
+    # Group data by year and month, then calculate sum of net and gross profit for each group
+    annual_sums = df.groupby(['Year']).agg({'Net Profit':'sum', 'Gross Profit':'sum'}).reset_index()
+
+    # Sort the data by year to ensure chronological order
+    annual_sums.sort_values('Year', inplace=True)
+
+    # Calculate the percentage difference for net and gross profit compared to the previous year
+    for profit_type in ['Net Profit', 'Gross Profit']:
+        annual_sums[f'{profit_type} Percentage Change'] = annual_sums[profit_type].pct_change() * 100
+
+    return annual_sums
 
